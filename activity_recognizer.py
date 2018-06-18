@@ -35,9 +35,7 @@ class FftNode(CtrlNode):
             'XdataIn': dict(io='in'),
             'YdataIn': dict(io='in'),
             'ZdataIn': dict(io='in'),
-            'XdataOut': dict(io='out'),
-            'YdataOut': dict(io='out'),
-            'ZdataOut':dict(io='out'),
+            'fftdataOut': dict(io='out'),
 
         }
         self._bufferX = np.array([])
@@ -56,38 +54,75 @@ class FftNode(CtrlNode):
         self._bufferZ = np.append(self._bufferZ, kwds['ZdataIn'])
         self._bufferZ = self._bufferZ[-size:]
 
-    # das was hier auskommentiert ist würde auch funktionieren und entspricht größtenteils dem Code aus dem Kurs am Dienstag
-    # mit dem Code sind die Amplituden auch nicht so groß, wie es jetzt der Fall ist, aber ich weiß nicht, ab der aktuelle
-    # Code ausreicht, oder ob wir das so machen müssen, wie bei dem auskommentierten Teil
-     #   x = linspace(0, 10, len(self._bufferX)) # 101 samples from 0 to 10
 
-     #   Fs = 10.0  # sampling rate of x
-     #   y = self._bufferX
-      #  n = len(y) # length of the signal
-     #   k = arange(n)
-      #  T = n / Fs
-     #   frq = k / T # two sides frequency range
-     #   frq = frq[0:int(n/2)] # one side frequency range
+        for i in range(len(self._bufferX)):
+            xValue = self._bufferX[i]
+            yValue = self._bufferY[i]
+            zValue = self._bufferZ[i]
+            avgValue =((xValue + yValue + zValue) /3)
+            self._avg = np.append(self._avg, avgValue)
+            self._avg = self._avg[-size:]
 
-
-      #  Y = fft(y) / n # fft computing and normalization
-     #   Y = Y[0:int(n/2)] # use only first half as the function is mirrored
-     #   print(Y)
+            avg = fft(self._avg)
+            avgfft = abs(avg)
 
 
-
-        x = fft(self._bufferX)
-        xfft = abs(x)
-        y = fft(self._bufferY)
-        yfft = abs(y)
-        z = fft(self._bufferZ)
-        zfft = abs(z)
-
-        return {'XdataOut':  xfft, 'YdataOut': yfft, 'ZdataOut': zfft}
+            return {'fftdataOut':  avgfft}
 
 fclib.registerNodeType(FftNode, [('Data',)])
 
+class SvmNode(Node):
 
+    nodeName = "Svm"
+
+    def __init__(self, name):
+        terminals = {
+
+        }
+
+        self.ui = QtGui.QWidget()
+        self.layout = QtGui.QGridLayout()
+
+        activityLabel = QtGui.QLabel("Choose your activity")
+        self.layout.addWidget(activityLabel)
+
+        self.activity = QtGui.QComboBox()
+        self.activity.addItem("Jumping")
+        self.activity.addItem("Walking")
+        self.activity.addItem("Sitting")
+        self.activity.activated.connect(self.getTextFromActivity)
+        self.layout.addWidget(self.activity)
+
+        modeLabel = QtGui.QLabel("Choose the mode")
+        self.layout.addWidget(modeLabel)
+
+        self.mode = QtGui.QComboBox()
+        self.mode.addItem("Training")
+        self.mode.addItem("Prediction")
+        self.mode.addItem("Inactive")
+        self.mode.activated.connect(self.getTextFromMode)
+        self.layout.addWidget(self.mode)
+
+        self.ui.setLayout(self.layout)
+
+        Node.__init__(self, name, terminals=terminals)
+
+    def ctrlWidget(self):
+        return self.ui
+
+    def getTextFromMode(self):
+        self.modeText = self.mode.currentText()
+
+    def getTextFromActivity(self):
+        self.activityText = self.mode.currentText()
+
+
+    def process(self, **kwds):
+        test = "test"
+
+        return test
+
+fclib.registerNodeType(SvmNode, [('Sensor',)])
 
 
 if __name__ == '__main__':
@@ -133,19 +168,6 @@ if __name__ == '__main__':
     pw4Node = fc.createNode('PlotWidget', pos=(750, -150))
     pw4Node.setPlot(pw4)
 
-    pw5 = pg.PlotWidget()
-    layout.addWidget(pw5, 2, 1)
-    pw5.setYRange(0, 1024)
-
-    pw5Node = fc.createNode('PlotWidget', pos=(750, 0))
-    pw5Node.setPlot(pw5)
-
-    pw6 = pg.PlotWidget()
-    layout.addWidget(pw6, 2, 2)
-    pw6.setYRange(0, 1024)
-
-    pw6Node = fc.createNode('PlotWidget', pos=(750, 150))
-    pw6Node.setPlot(pw6)
 
 
     wiimoteNode = fc.createNode('Wiimote', pos=(0, 0),)
@@ -153,9 +175,8 @@ if __name__ == '__main__':
     buffer2Node = fc.createNode('Buffer', pos=(150, 0))
     buffer3Node = fc.createNode('Buffer', pos=(150, 150))
     fftNode = fc.createNode('Fft', pos=(550, 0))
-    #normalVectorNode = fc.createNode('NormalVector', pos=(150, 300))
-    #plotCurve = fc.createNode('PlotCurve', pos=(200, 100))
-    #logNode = fc.createNode('LogNode', pos=(250, 100))
+    svmNode = fc.createNode('Svm', pos=(550, 120))
+
 
     fc.connectTerminals(wiimoteNode['accelX'], buffer1Node['dataIn'])
     fc.connectTerminals(wiimoteNode['accelY'], buffer2Node['dataIn'])
@@ -166,18 +187,8 @@ if __name__ == '__main__':
     fc.connectTerminals(buffer1Node['dataOut'], fftNode['XdataIn'])
     fc.connectTerminals(buffer2Node['dataOut'], fftNode['YdataIn'])
     fc.connectTerminals(buffer3Node['dataOut'], fftNode['ZdataIn'])
-    fc.connectTerminals(fftNode['XdataOut'], pw4Node['In'])
-    fc.connectTerminals(fftNode['YdataOut'], pw5Node['In'])
-    fc.connectTerminals(fftNode['ZdataOut'], pw6Node['In'])
+    fc.connectTerminals(fftNode['fftdataOut'], pw4Node['In'])
 
-    #fc.connectTerminals(logNode['XOut'], pw1Node['In'])
-    ##fc.connectTerminals(logNode['YOut'], pw2Node['In'])
-    #fc.connectTerminals(logNode['ZOut'], pw3Node['In'])
-    #fc.connectTerminals(buffer1Node['dataOut'], normalVectorNode['XdataIn'])
-   # fc.connectTerminals(buffer3Node['dataOut'], normalVectorNode['ZdataIn'])
-   # fc.connectTerminals(normalVectorNode['XdataOut'], plotCurve['x'])
-   # fc.connectTerminals(normalVectorNode['YdataOut'], plotCurve['y'])
-   # fc.connectTerminals(plotCurve['plot'], pwNormalveNode['In'])
 
     win.show()
 
