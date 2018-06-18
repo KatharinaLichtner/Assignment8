@@ -35,9 +35,7 @@ class FftNode(CtrlNode):
             'XdataIn': dict(io='in'),
             'YdataIn': dict(io='in'),
             'ZdataIn': dict(io='in'),
-            'XdataOut': dict(io='out'),
-            'YdataOut': dict(io='out'),
-            'ZdataOut':dict(io='out'),
+            'fftdataOut': dict(io='out'),
 
         }
         self._bufferX = np.array([])
@@ -57,14 +55,19 @@ class FftNode(CtrlNode):
         self._bufferZ = self._bufferZ[-size:]
 
 
-        x = fft(self._bufferX)
-        xfft = abs(x)
-        y = fft(self._bufferY)
-        yfft = abs(y)
-        z = fft(self._bufferZ)
-        zfft = abs(z)
+        for i in range(len(self._bufferX)):
+            xValue = self._bufferX[i]
+            yValue = self._bufferY[i]
+            zValue = self._bufferZ[i]
+            avgValue =((xValue + yValue + zValue) /3)
+            self._avg = np.append(self._avg, avgValue)
+            self._avg = self._avg[-size:]
 
-        return {'XdataOut':  xfft, 'YdataOut': yfft, 'ZdataOut': zfft}
+        avg = np.fft.fft(self._avg / len(self._avg))
+        avgfft = abs(avg)
+
+
+        return {'fftdataOut':  avgfft}
 
 fclib.registerNodeType(FftNode, [('Data',)])
 
@@ -72,10 +75,26 @@ class SvmNode(Node):
 
     nodeName = "Svm"
 
+
     def __init__(self, name):
         terminals = {
-
+            'In': dict(io='in'),
+            'Out': dict(io='out'),
         }
+
+        self._buffer = np.array([])
+
+        self.JUMP = 0
+        self.WALK = 1
+        self.SIT = 2
+
+        self.modeText = "Training"
+        self.activityText = "Jumping"
+
+        self.jump = np.array([])
+        self.sit = np.array([])
+        self.walk = np.array([])
+        self.inputData = np.array([])
 
         self.ui = QtGui.QWidget()
         self.layout = QtGui.QGridLayout()
@@ -102,6 +121,8 @@ class SvmNode(Node):
 
         self.ui.setLayout(self.layout)
 
+        self.c = svm.SVC()
+
         Node.__init__(self, name, terminals=terminals)
 
     def ctrlWidget(self):
@@ -115,9 +136,29 @@ class SvmNode(Node):
 
 
     def process(self, **kwds):
-        test = "test"
+        self.inputData = np.append(self.inputData, kwds['In'])
+        categories = [self.JUMP] * 3 + [self.SIT] * 3 + [self.WALK] * 3
+        print("Model: ", self.modeText)
+        predicted = 0
+        if self.modeText == "Training":
+            training_data = self.jump[1:] + self.walk[1:] + self.sit[1:]
+            if self.activityText == "Jumping":
+                self.jump = np.append(self.jump, self.inputData)
+                self.c.fit(training_data,categories)
+                print("Training Jumping")
+            elif self.activityText == "Walking":
+                self.walk = np.append(self.walk, self.inputData)
+                self.c.fit(training_data,categories)
+                print("Training Walking")
+            elif self.activityText == "Sitting":
+                self.sit = np.append(self.sit, self.inputData)
+                self.c.fit(training_data,categories)
+                print("Training Sitting")
+        elif self.modeText == "Prediction":
+            predicted = self.c.predict(self.inputData)
+            print(predicted)
 
-        return test
+        return {'Out': predicted}
 
 fclib.registerNodeType(SvmNode, [('Sensor',)])
 
@@ -165,19 +206,6 @@ if __name__ == '__main__':
     pw4Node = fc.createNode('PlotWidget', pos=(750, -150))
     pw4Node.setPlot(pw4)
 
-    pw5 = pg.PlotWidget()
-    layout.addWidget(pw5, 2, 1)
-    pw5.setYRange(0, 1024)
-
-    pw5Node = fc.createNode('PlotWidget', pos=(750, 0))
-    pw5Node.setPlot(pw5)
-
-    pw6 = pg.PlotWidget()
-    layout.addWidget(pw6, 2, 2)
-    pw6.setYRange(0, 1024)
-
-    pw6Node = fc.createNode('PlotWidget', pos=(750, 150))
-    pw6Node.setPlot(pw6)
 
 
     wiimoteNode = fc.createNode('Wiimote', pos=(0, 0),)
@@ -186,9 +214,7 @@ if __name__ == '__main__':
     buffer3Node = fc.createNode('Buffer', pos=(150, 150))
     fftNode = fc.createNode('Fft', pos=(550, 0))
     svmNode = fc.createNode('Svm', pos=(550, 120))
-    #normalVectorNode = fc.createNode('NormalVector', pos=(150, 300))
-    #plotCurve = fc.createNode('PlotCurve', pos=(200, 100))
-    #logNode = fc.createNode('LogNode', pos=(250, 100))
+
 
     fc.connectTerminals(wiimoteNode['accelX'], buffer1Node['dataIn'])
     fc.connectTerminals(wiimoteNode['accelY'], buffer2Node['dataIn'])
@@ -199,18 +225,9 @@ if __name__ == '__main__':
     fc.connectTerminals(buffer1Node['dataOut'], fftNode['XdataIn'])
     fc.connectTerminals(buffer2Node['dataOut'], fftNode['YdataIn'])
     fc.connectTerminals(buffer3Node['dataOut'], fftNode['ZdataIn'])
-    fc.connectTerminals(fftNode['XdataOut'], pw4Node['In'])
-    fc.connectTerminals(fftNode['YdataOut'], pw5Node['In'])
-    fc.connectTerminals(fftNode['ZdataOut'], pw6Node['In'])
+    fc.connectTerminals(fftNode['fftdataOut'], pw4Node['In'])
+    fc.connectTerminals(fftNode['fftdataOut'], svmNode['In'])
 
-    #fc.connectTerminals(logNode['XOut'], pw1Node['In'])
-    ##fc.connectTerminals(logNode['YOut'], pw2Node['In'])
-    #fc.connectTerminals(logNode['ZOut'], pw3Node['In'])
-    #fc.connectTerminals(buffer1Node['dataOut'], normalVectorNode['XdataIn'])
-   # fc.connectTerminals(buffer3Node['dataOut'], normalVectorNode['ZdataIn'])
-   # fc.connectTerminals(normalVectorNode['XdataOut'], plotCurve['x'])
-   # fc.connectTerminals(normalVectorNode['YdataOut'], plotCurve['y'])
-   # fc.connectTerminals(plotCurve['plot'], pwNormalveNode['In'])
 
     win.show()
 
