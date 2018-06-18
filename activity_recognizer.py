@@ -88,7 +88,7 @@ class SvmNode(Node):
         self.WALK = 1
         self.SIT = 2
 
-        self.modeText = "Training"
+        self.modeText = "Inactive"
         self.activityText = "Jumping"
 
         self.jump = np.array([])
@@ -113,9 +113,9 @@ class SvmNode(Node):
         self.layout.addWidget(modeLabel)
 
         self.mode = QtGui.QComboBox()
+        self.mode.addItem("Inactive")
         self.mode.addItem("Training")
         self.mode.addItem("Prediction")
-        self.mode.addItem("Inactive")
         self.mode.activated.connect(self.getTextFromMode)
         self.layout.addWidget(self.mode)
 
