@@ -87,7 +87,85 @@ class FftNode(CtrlNode):
 
 fclib.registerNodeType(FftNode, [('Data',)])
 
+class SvmNode(Node):
 
+    nodeName = "Svm"
+
+    def __init__(self, name):
+        terminals = {
+            'XdataIn': dict(io='in'),
+            'YdataIn': dict(io='in'),
+            'ZdataIn': dict(io='in'),
+            'XdataOut': dict(io='out'),
+            'YdataOut': dict(io='out'),
+            'ZdataOut':dict(io='out'),
+
+        }
+
+        self._bufferX = np.array([])
+        self._bufferY = np.array([])
+        self._bufferZ = np.array([])
+        self._avg = np.array([])
+        self._xcut = np.array([])
+
+        self.ui = QtGui.QWidget()
+        self.layout = QtGui.QGridLayout()
+
+        activityLabel = QtGui.QLabel("Choose your activity")
+        self.layout.addWidget(activityLabel)
+
+        self.activity = QtGui.QComboBox()
+        self.activity.addItem("Jumping")
+        self.activity.addItem("Walking")
+        self.activity.addItem("Sitting")
+        self.mode.activated.connect(self.getTextFromActivity)
+        self.layout.addWidget(self.activity)
+
+        modeLabel = QtGui.QLabel("Choose the mode")
+        self.layout.addWidget(modeLabel)
+
+        self.mode = QtGui.QComboBox()
+        self.mode.addItem("Training")
+        self.mode.addItem("Prediction")
+        self.mode.addItem("Inactive")
+        self.mode.activated.connect(self.getTextFromMode)
+        self.layout.addWidget(self.mode)
+
+        self.ui.setLayout(self.layout)
+
+
+        Node.__init__(self, name, terminals=terminals)
+
+    def ctrlWidget(self):
+        return self.ui
+
+    def getTextFromMode(self):
+        self.modeText = self.mode.currentText()
+
+    def getTextFromActivity(self):
+        self.activityText = self.mode.currentText()
+
+
+    def process(self, **kwds):
+        size = int(self.ctrls['size'].value())
+        self._bufferX = np.append(self._bufferX, kwds['XdataIn'])
+        self._bufferX = self._bufferX[-size:]
+        self._bufferY = np.append(self._bufferY, kwds['YdataIn'])
+        self._bufferY = self._bufferY[-size:]
+        self._bufferZ = np.append(self._bufferZ, kwds['ZdataIn'])
+        self._bufferZ = self._bufferZ[-size:]
+
+
+        x = fft(self._bufferX)
+        xfft = abs(x)
+        y = fft(self._bufferY)
+        yfft = abs(y)
+        z = fft(self._bufferZ)
+        zfft = abs(z)
+
+        return {'XdataOut':  xfft, 'YdataOut': yfft, 'ZdataOut': zfft}
+
+fclib.registerNodeType(SvmNode, [('Sensor',)])
 
 
 if __name__ == '__main__':
@@ -153,6 +231,7 @@ if __name__ == '__main__':
     buffer2Node = fc.createNode('Buffer', pos=(150, 0))
     buffer3Node = fc.createNode('Buffer', pos=(150, 150))
     fftNode = fc.createNode('Fft', pos=(550, 0))
+    svmNode = fc.createNode('Svm', pos=(550, 120))
     #normalVectorNode = fc.createNode('NormalVector', pos=(150, 300))
     #plotCurve = fc.createNode('PlotCurve', pos=(200, 100))
     #logNode = fc.createNode('LogNode', pos=(250, 100))
