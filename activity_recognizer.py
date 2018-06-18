@@ -56,25 +56,6 @@ class FftNode(CtrlNode):
         self._bufferZ = np.append(self._bufferZ, kwds['ZdataIn'])
         self._bufferZ = self._bufferZ[-size:]
 
-    # das was hier auskommentiert ist würde auch funktionieren und entspricht größtenteils dem Code aus dem Kurs am Dienstag
-    # mit dem Code sind die Amplituden auch nicht so groß, wie es jetzt der Fall ist, aber ich weiß nicht, ab der aktuelle
-    # Code ausreicht, oder ob wir das so machen müssen, wie bei dem auskommentierten Teil
-     #   x = linspace(0, 10, len(self._bufferX)) # 101 samples from 0 to 10
-
-     #   Fs = 10.0  # sampling rate of x
-     #   y = self._bufferX
-      #  n = len(y) # length of the signal
-     #   k = arange(n)
-      #  T = n / Fs
-     #   frq = k / T # two sides frequency range
-     #   frq = frq[0:int(n/2)] # one side frequency range
-
-
-      #  Y = fft(y) / n # fft computing and normalization
-     #   Y = Y[0:int(n/2)] # use only first half as the function is mirrored
-     #   print(Y)
-
-
 
         x = fft(self._bufferX)
         xfft = abs(x)
@@ -93,20 +74,8 @@ class SvmNode(Node):
 
     def __init__(self, name):
         terminals = {
-            'XdataIn': dict(io='in'),
-            'YdataIn': dict(io='in'),
-            'ZdataIn': dict(io='in'),
-            'XdataOut': dict(io='out'),
-            'YdataOut': dict(io='out'),
-            'ZdataOut':dict(io='out'),
 
         }
-
-        self._bufferX = np.array([])
-        self._bufferY = np.array([])
-        self._bufferZ = np.array([])
-        self._avg = np.array([])
-        self._xcut = np.array([])
 
         self.ui = QtGui.QWidget()
         self.layout = QtGui.QGridLayout()
@@ -118,7 +87,7 @@ class SvmNode(Node):
         self.activity.addItem("Jumping")
         self.activity.addItem("Walking")
         self.activity.addItem("Sitting")
-        self.mode.activated.connect(self.getTextFromActivity)
+        self.activity.activated.connect(self.getTextFromActivity)
         self.layout.addWidget(self.activity)
 
         modeLabel = QtGui.QLabel("Choose the mode")
@@ -133,7 +102,6 @@ class SvmNode(Node):
 
         self.ui.setLayout(self.layout)
 
-
         Node.__init__(self, name, terminals=terminals)
 
     def ctrlWidget(self):
@@ -147,23 +115,9 @@ class SvmNode(Node):
 
 
     def process(self, **kwds):
-        size = int(self.ctrls['size'].value())
-        self._bufferX = np.append(self._bufferX, kwds['XdataIn'])
-        self._bufferX = self._bufferX[-size:]
-        self._bufferY = np.append(self._bufferY, kwds['YdataIn'])
-        self._bufferY = self._bufferY[-size:]
-        self._bufferZ = np.append(self._bufferZ, kwds['ZdataIn'])
-        self._bufferZ = self._bufferZ[-size:]
+        test = "test"
 
-
-        x = fft(self._bufferX)
-        xfft = abs(x)
-        y = fft(self._bufferY)
-        yfft = abs(y)
-        z = fft(self._bufferZ)
-        zfft = abs(z)
-
-        return {'XdataOut':  xfft, 'YdataOut': yfft, 'ZdataOut': zfft}
+        return test
 
 fclib.registerNodeType(SvmNode, [('Sensor',)])
 
