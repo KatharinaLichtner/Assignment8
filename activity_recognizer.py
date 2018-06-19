@@ -63,11 +63,11 @@ class FftNode(CtrlNode):
             self._avg = np.append(self._avg, avgValue)
             self._avg = self._avg[-size:]
 
-            avg = fft(self._avg)
-            avgfft = abs(avg)
+        avg = np.fft.fft(self._avg / len(self._avg))
+        avgfft = abs(avg)
 
 
-            return {'fftdataOut':  avgfft}
+        return {'fftdataOut':  avgfft}
 
 fclib.registerNodeType(FftNode, [('Data',)])
 
@@ -75,10 +75,29 @@ class SvmNode(Node):
 
     nodeName = "Svm"
 
+
     def __init__(self, name):
         terminals = {
-
+            'In': dict(io='in'),
+            'Out': dict(io='out'),
         }
+
+        self._buffer = np.array([])
+
+        self.JUMP = 0
+        self.WALK = 1
+        self.SIT = 2
+        self.TRAININGTIME = 1000
+
+        self.modeText = "Inactive"
+        self.activityText = "Jumping"
+
+        self.jump = np.array([])
+        self.sit = np.array([])
+        self.walk = np.array([])
+        self.inputData = np.array([])
+        self.predictInput = np.array([])
+        self.inputData_cut = np.array([])
 
         self.ui = QtGui.QWidget()
         self.layout = QtGui.QGridLayout()
@@ -97,13 +116,16 @@ class SvmNode(Node):
         self.layout.addWidget(modeLabel)
 
         self.mode = QtGui.QComboBox()
+        self.mode.addItem("Inactive")
         self.mode.addItem("Training")
         self.mode.addItem("Prediction")
-        self.mode.addItem("Inactive")
         self.mode.activated.connect(self.getTextFromMode)
         self.layout.addWidget(self.mode)
 
         self.ui.setLayout(self.layout)
+
+        self.c = svm.SVC()
+        self.timer = QtCore.QTime()
 
         Node.__init__(self, name, terminals=terminals)
 
@@ -112,15 +134,47 @@ class SvmNode(Node):
 
     def getTextFromMode(self):
         self.modeText = self.mode.currentText()
+        if self.modeText is not "Inactive":
+            self.timer.start()
 
     def getTextFromActivity(self):
-        self.activityText = self.mode.currentText()
-
+        self.activityText = self.activity.currentText()
 
     def process(self, **kwds):
-        test = "test"
+        self.inputData = np.append(self.inputData, kwds['In'])
+        categories = [self.JUMP] + [self.SIT] + [self.WALK]
+        predicted = 0
+        self.getTextFromActivity()
+        self.getTextFromMode()
+        if self.modeText == "Training":
+            #print(self.activityText)
+            while self.timer.elapsed() < self.TRAININGTIME:
+                training_data = self.jump + self.walk + self.sit
+                if self.activityText == "Jumping":
+                    print("Training Jumping")
+                    self.jump = np.append(self.jump, self.inputData)
+                    #print(self.jump)
+                   # self.c.fit(training_data,categories)
 
-        return test
+                if self.activityText == "Walking":
+                    print("Training Walking")
+                    self.walk = np.append(self.walk, self.inputData)
+                 #   self.c.fit(training_data,categories)
+
+                if self.activityText == "Sitting":
+                    self.sit = np.append(self.sit, self.inputData)
+                  #  self.c.fit(training_data,categories)
+                    print("Training Sitting")
+
+        elif self.modeText == "Prediction":
+            self.inputData_cut = np.array(self.inputData_cut, self.inputData[:50])
+            self.c.fit(self.inputData_cut, categories)
+            predicted = self.c.predict(self.inputData_cut)
+            print("predicted: ", predicted)
+
+        self.timer.elapsed()
+
+        return {'Out': predicted}
 
 fclib.registerNodeType(SvmNode, [('Sensor',)])
 
@@ -188,6 +242,7 @@ if __name__ == '__main__':
     fc.connectTerminals(buffer2Node['dataOut'], fftNode['YdataIn'])
     fc.connectTerminals(buffer3Node['dataOut'], fftNode['ZdataIn'])
     fc.connectTerminals(fftNode['fftdataOut'], pw4Node['In'])
+    fc.connectTerminals(fftNode['fftdataOut'], svmNode['In'])
 
 
     win.show()
