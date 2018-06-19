@@ -87,6 +87,7 @@ class SvmNode(Node):
         self.JUMP = 0
         self.WALK = 1
         self.SIT = 2
+        self.TRAININGTIME = 10000
 
         self.modeText = "Inactive"
         self.activityText = "Jumping"
@@ -95,6 +96,8 @@ class SvmNode(Node):
         self.sit = np.array([])
         self.walk = np.array([])
         self.inputData = np.array([])
+        self.predictInput = np.array([])
+        self.inputData_cut = np.array([])
 
         self.ui = QtGui.QWidget()
         self.layout = QtGui.QGridLayout()
@@ -122,6 +125,8 @@ class SvmNode(Node):
         self.ui.setLayout(self.layout)
 
         self.c = svm.SVC()
+        self.timer = QtCore.QTime()
+
 
         Node.__init__(self, name, terminals=terminals)
 
@@ -130,33 +135,38 @@ class SvmNode(Node):
 
     def getTextFromMode(self):
         self.modeText = self.mode.currentText()
+        if self.modeText is not "Inactive":
+            self.timer.start()
 
     def getTextFromActivity(self):
         self.activityText = self.mode.currentText()
 
-
     def process(self, **kwds):
         self.inputData = np.append(self.inputData, kwds['In'])
         categories = [self.JUMP] * 3 + [self.SIT] * 3 + [self.WALK] * 3
-        print("Model: ", self.modeText)
         predicted = 0
         if self.modeText == "Training":
-            training_data = self.jump[1:] + self.walk[1:] + self.sit[1:]
-            if self.activityText == "Jumping":
-                self.jump = np.append(self.jump, self.inputData)
-                self.c.fit(training_data,categories)
-                print("Training Jumping")
-            elif self.activityText == "Walking":
-                self.walk = np.append(self.walk, self.inputData)
-                self.c.fit(training_data,categories)
-                print("Training Walking")
-            elif self.activityText == "Sitting":
-                self.sit = np.append(self.sit, self.inputData)
-                self.c.fit(training_data,categories)
-                print("Training Sitting")
+            while self.timer.elapsed() < self.TRAININGTIME:
+                training_data = self.jump + self.walk + self.sit
+                if self.activityText == "Jumping":
+                    self.jump = np.append(self.jump, self.inputData)
+                    self.c.fit(training_data,categories)
+                    print("Training Jumping")
+                elif self.activityText == "Walking":
+                    self.walk = np.append(self.walk, self.inputData)
+                    self.c.fit(training_data,categories)
+                    print("Training Walking")
+                elif self.activityText == "Sitting":
+                    self.sit = np.append(self.sit, self.inputData)
+                    self.c.fit(training_data,categories)
+                    print("Training Sitting")
         elif self.modeText == "Prediction":
-            predicted = self.c.predict(self.inputData)
-            print(predicted)
+            self.inputData_cut = np.array(self.inputData_cut, self.inputData[:50])
+            self.c.fit(self.inputData_cut, categories)
+            predicted = self.c.predict(self.inputData_cut)
+            print("predicted: ", predicted)
+
+        self.timer.elapsed()
 
         return {'Out': predicted}
 
