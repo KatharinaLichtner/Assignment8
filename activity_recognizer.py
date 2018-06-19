@@ -95,9 +95,10 @@ class SvmNode(Node):
         self.jump = np.array([])
         self.sit = np.array([])
         self.walk = np.array([])
-        self.inputData = np.array([])
+        self.training_Data = []
         self.predictInput = np.array([])
         self.inputData_cut = np.array([])
+        self.featureVector = np.array([])
 
         self.ui = QtGui.QWidget()
         self.layout = QtGui.QGridLayout()
@@ -141,35 +142,31 @@ class SvmNode(Node):
         self.activityText = self.activity.currentText()
 
     def process(self, **kwds):
-        self.inputData = np.append(self.inputData, kwds['In'])
-        categories = [self.JUMP] + [self.SIT] + [self.WALK]
+        if self.timer.elapsed() < self.TRAININGTIME:
+            inputData = kwds['In']
         predicted = 0
-        self.getTextFromActivity()
-        self.getTextFromMode()
         if self.modeText == "Training":
-            #print(self.activityText)
-            while self.timer.elapsed() < self.TRAININGTIME:
-                training_data = self.jump + self.walk + self.sit
-                if self.activityText == "Jumping":
-                    print("Training Jumping")
-                    self.jump = np.append(self.jump, self.inputData)
-                    #print(self.jump)
-                   # self.c.fit(training_data,categories)
+            if self.activityText == "Jumping":
+                print("Training Jumping")
+                for i in range(len(inputData[1:])):
+                    self.featureVector = np.append(self.featureVector, self.JUMP)
+                    self.training_Data.append(inputData[i])
 
-                if self.activityText == "Walking":
-                    print("Training Walking")
-                    self.walk = np.append(self.walk, self.inputData)
-                 #   self.c.fit(training_data,categories)
+            if self.activityText == "Walking":
+                print("Training Walking")
+                for i in range(len(inputData[1:])):
+                    self.featureVector = np.append(self.featureVector, self.WALK)
+                    self.training_Data.append(inputData[i])
 
-                if self.activityText == "Sitting":
-                    self.sit = np.append(self.sit, self.inputData)
-                  #  self.c.fit(training_data,categories)
-                    print("Training Sitting")
+            if self.activityText == "Sitting":
+                for i in range(len(inputData[1:])):
+                    self.featureVector = np.append(self.featureVector, self.SIT)
+                    self.training_Data.append(inputData[i])
+                print("Training Sitting")
+            self.c.fit(self.training_data, self.featureVector)
 
         elif self.modeText == "Prediction":
-            self.inputData_cut = np.array(self.inputData_cut, self.inputData[:50])
-            self.c.fit(self.inputData_cut, categories)
-            predicted = self.c.predict(self.inputData_cut)
+            predicted = self.c.predict([inputData[1:]])
             print("predicted: ", predicted)
 
         self.timer.elapsed()
