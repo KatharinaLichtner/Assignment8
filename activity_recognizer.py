@@ -142,38 +142,108 @@ class SvmNode(Node):
         self.activityText = self.activity.currentText()
 
     def process(self, **kwds):
-        if self.timer.elapsed() < self.TRAININGTIME:
-            inputData = kwds['In']
         predicted = 0
-        if self.modeText == "Training":
-            if self.activityText == "Jumping":
-                print("Training Jumping")
-                for i in range(len(inputData[1:])):
-                    self.featureVector = np.append(self.featureVector, self.JUMP)
-                    self.training_Data.append(inputData[i])
+        while self.timer.elapsed() < self.TRAININGTIME:
+            inputData = kwds['In']
+            if self.modeText == "Training":
+                if self.activityText == "Jumping":
+                    print("Training Jumping")
+                    for i in range(len(inputData[1:])):
 
-            if self.activityText == "Walking":
-                print("Training Walking")
-                for i in range(len(inputData[1:])):
-                    self.featureVector = np.append(self.featureVector, self.WALK)
-                    self.training_Data.append(inputData[i])
+                        self.training_Data.append(inputData[i])
+                self.featureVector = np.append(self.featureVector, self.JUMP)
+                print(self.featureVector, self.training_Data)
+                if self.activityText == "Walking":
+                    print("Training Walking")
+                    for i in range(len(inputData[1:])):
+                        self.featureVector = np.append(self.featureVector, self.WALK)
+                        self.training_Data.append(inputData[i])
 
-            if self.activityText == "Sitting":
-                for i in range(len(inputData[1:])):
-                    self.featureVector = np.append(self.featureVector, self.SIT)
-                    self.training_Data.append(inputData[i])
-                print("Training Sitting")
-            self.c.fit(self.training_data, self.featureVector)
+                if self.activityText == "Sitting":
+                    for i in range(len(inputData[1:])):
+                        self.featureVector = np.append(self.featureVector, self.SIT)
+                        self.training_Data.append(inputData[i])
+                    print("Training Sitting")
+                self.c.fit(self.training_data, self.featureVector)
 
-        elif self.modeText == "Prediction":
-            predicted = self.c.predict([inputData[1:]])
-            print("predicted: ", predicted)
+            elif self.modeText == "Prediction":
+                predicted = self.c.predict([inputData[1:]])
+                print("predicted: ", predicted)
 
         self.timer.elapsed()
 
         return {'Out': predicted}
 
 fclib.registerNodeType(SvmNode, [('Sensor',)])
+
+
+
+
+class TextNode(Node):
+
+    nodeName = "TextNode"
+
+
+    def __init__(self, name):
+        terminals = {
+            'In': dict(io='in'),
+            'Out': dict(io='out'),
+
+        }
+
+
+        self._buffer = np.array([])
+
+        self.JUMP = 0
+        self.WALK = 1
+        self.SIT = 2
+        self.TRAININGTIME = 1000
+
+        self.modeText = "Inactive"
+        self.activityText = "Jumping"
+
+        self.jump = np.array([])
+        self.sit = np.array([])
+        self.walk = np.array([])
+        self.training_Data = []
+        self.predictInput = np.array([])
+        self.inputData_cut = np.array([])
+        self.featureVector = np.array([])
+
+        self.ui = QtGui.QWidget()
+        self.layout = QtGui.QGridLayout()
+
+        categoryLabel = QtGui.QLabel("Predicted Category")
+        self.layout.addWidget(categoryLabel)
+
+
+
+
+
+        self.ui.setLayout(self.layout)
+
+
+        Node.__init__(self, name, terminals=terminals)
+
+    def ctrlWidget(self):
+        return self.ui
+
+    def process(self, **kwds):
+        inputData = kwds['In']
+        if inputData == self.JUMP:
+            categoryText = QtGui.QLabel("Jump")
+            self.layout.addWidget(categoryText)
+        elif inputData == self.SIT:
+            categoryText = QtGui.QLabel("Sit")
+            self.layout.addWidget(categoryText)
+        if inputData == self.WALK:
+            categoryText = QtGui.QLabel("Walk")
+            self.layout.addWidget(categoryText)
+
+
+
+
+fclib.registerNodeType(TextNode, [('Sensor',)])
 
 
 if __name__ == '__main__':
@@ -227,6 +297,7 @@ if __name__ == '__main__':
     buffer3Node = fc.createNode('Buffer', pos=(150, 150))
     fftNode = fc.createNode('Fft', pos=(550, 0))
     svmNode = fc.createNode('Svm', pos=(550, 120))
+    textNode = fc.createNode('TextNode', pos=(550, 200))
 
 
     fc.connectTerminals(wiimoteNode['accelX'], buffer1Node['dataIn'])
@@ -240,6 +311,7 @@ if __name__ == '__main__':
     fc.connectTerminals(buffer3Node['dataOut'], fftNode['ZdataIn'])
     fc.connectTerminals(fftNode['fftdataOut'], pw4Node['In'])
     fc.connectTerminals(fftNode['fftdataOut'], svmNode['In'])
+    fc.connectTerminals(svmNode['Out'], textNode['In'])
 
 
     win.show()
