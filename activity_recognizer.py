@@ -22,9 +22,9 @@ from scipy import fft
 from sklearn import svm
 
 
-
+# Created by Lucia Eckl and Katharina Lichtner
+# calculate the peaks of the raw data from every movement
 class FftNode(CtrlNode):
-
     nodeName = "Fft"
     uiTemplate = [
         ('size',  'spin', {'value': 32.0, 'step': 1.0, 'bounds': [0.0, 128.0]}),
@@ -54,28 +54,31 @@ class FftNode(CtrlNode):
         self._bufferZ = np.append(self._bufferZ, kwds['ZdataIn'])
         self._bufferZ = self._bufferZ[-size:]
 
-
         for i in range(len(self._bufferX)):
             xValue = self._bufferX[i]
             yValue = self._bufferY[i]
             zValue = self._bufferZ[i]
-            avgValue =((xValue + yValue + zValue) /3)
+            avgValue = ((xValue + yValue + zValue) / 3)
             self._avg = np.append(self._avg, avgValue)
             self._avg = self._avg[-size:]
 
         avg = np.fft.fft(self._avg / len(self._avg))
         avgfft = abs(avg)
-
-
         return {'fftdataOut':  avgfft}
+
 
 fclib.registerNodeType(FftNode, [('Data',)])
 
-class SvmNode(Node):
 
+# Created by Lucia Eckl and Katharina Lichtner
+# extend the UI so the user can switch between training, predicting and inactive mode
+# the user can also select one one the defined movements, which should be trained
+# the training and prediction status is shown with a progress bar
+# trained data get a category which makes it possible to predict the category of a movement
+class SvmNode(Node):
     nodeName = "Svm"
 
-
+    # progress bar source: https://pythonprogramming.net/progress-bar-pyqt-tutorial/, last visited: 20.06.2018
     def __init__(self, name):
         terminals = {
             'In': dict(io='in'),
@@ -84,21 +87,18 @@ class SvmNode(Node):
 
         self._buffer = np.array([])
 
-        self.JUMP = 0
-        self.WALK = 1
+        self.SHAKE = 0
+        self.LIFT = 1
         self.SIT = 2
-        self.TRAININGTIME = 1000
+        self.TRAININGTIME = 5000
 
         self.modeText = "Inactive"
-        self.activityText = "Jumping"
+        self.activityText = "Shaking"
 
-        self.jump = np.array([])
-        self.sit = np.array([])
-        self.walk = np.array([])
-        self.training_Data = []
+        self.training_data = []
         self.predictInput = np.array([])
         self.inputData_cut = np.array([])
-        self.featureVector = np.array([])
+        self.featureVector = []
 
         self.ui = QtGui.QWidget()
         self.layout = QtGui.QGridLayout()
@@ -107,8 +107,8 @@ class SvmNode(Node):
         self.layout.addWidget(activityLabel)
 
         self.activity = QtGui.QComboBox()
-        self.activity.addItem("Jumping")
-        self.activity.addItem("Walking")
+        self.activity.addItem("Shaking")
+        self.activity.addItem("Lifting")
         self.activity.addItem("Sitting")
         self.activity.activated.connect(self.getTextFromActivity)
         self.layout.addWidget(self.activity)
@@ -122,6 +122,10 @@ class SvmNode(Node):
         self.mode.addItem("Prediction")
         self.mode.activated.connect(self.getTextFromMode)
         self.layout.addWidget(self.mode)
+
+        self.progress = QtGui.QProgressBar()
+        self.progress.setGeometry(200, 80, 250, 20)
+        self.layout.addWidget(self.progress)
 
         self.ui.setLayout(self.layout)
 
@@ -140,49 +144,47 @@ class SvmNode(Node):
 
     def getTextFromActivity(self):
         self.activityText = self.activity.currentText()
+        self.getTextFromMode()
 
     def process(self, **kwds):
         predicted = 0
-        while self.timer.elapsed() < self.TRAININGTIME:
+        if self.timer.elapsed() < self.TRAININGTIME:
             inputData = kwds['In']
             if self.modeText == "Training":
-                if self.activityText == "Jumping":
-                    print("Training Jumping")
-                    for i in range(len(inputData[1:])):
+                self.completed = self.timer.elapsed()/49
+                self.progress.setValue(self.completed)
+                if self.activityText == "Shaking":
+                    self.featureVector.append(self.SHAKE)
 
-                        self.training_Data.append(inputData[i])
-                self.featureVector = np.append(self.featureVector, self.JUMP)
-                print(self.featureVector, self.training_Data)
-                if self.activityText == "Walking":
-                    print("Training Walking")
-                    for i in range(len(inputData[1:])):
-                        self.featureVector = np.append(self.featureVector, self.WALK)
-                        self.training_Data.append(inputData[i])
+                elif self.activityText == "Lifting":
+                    self.featureVector.append(self.LIFT)
 
-                if self.activityText == "Sitting":
-                    for i in range(len(inputData[1:])):
-                        self.featureVector = np.append(self.featureVector, self.SIT)
-                        self.training_Data.append(inputData[i])
-                    print("Training Sitting")
+                else:
+                    self.featureVector.append(self.SIT)
+                self.training_data.append(inputData[1:])
                 self.c.fit(self.training_data, self.featureVector)
 
             elif self.modeText == "Prediction":
+                self.completed = self.timer.elapsed()/49
+                self.progress.setValue(self.completed)
                 predicted = self.c.predict([inputData[1:]])
-                print("predicted: ", predicted)
+
+        if self.modeText == "Inactive":
+            self.progress.setValue(0)
 
         self.timer.elapsed()
 
         return {'Out': predicted}
 
+
 fclib.registerNodeType(SvmNode, [('Sensor',)])
 
 
-
-
+# Created by Lucia Eckl and Katharina Lichtner
+# Textnode which shows the calculated category of a movement
 class TextNode(Node):
 
     nodeName = "TextNode"
-
 
     def __init__(self, name):
         terminals = {
@@ -191,37 +193,20 @@ class TextNode(Node):
 
         }
 
-
         self._buffer = np.array([])
 
-        self.JUMP = 0
-        self.WALK = 1
+        self.SHAKE = 0
+        self.LIFT = 1
         self.SIT = 2
-        self.TRAININGTIME = 1000
-
-        self.modeText = "Inactive"
-        self.activityText = "Jumping"
-
-        self.jump = np.array([])
-        self.sit = np.array([])
-        self.walk = np.array([])
-        self.training_Data = []
-        self.predictInput = np.array([])
-        self.inputData_cut = np.array([])
-        self.featureVector = np.array([])
 
         self.ui = QtGui.QWidget()
         self.layout = QtGui.QGridLayout()
 
         categoryLabel = QtGui.QLabel("Predicted Category")
         self.layout.addWidget(categoryLabel)
-
-
-
-
-
+        self.categoryText = QtGui.QLabel("")
+        self.layout.addWidget(self.categoryText)
         self.ui.setLayout(self.layout)
-
 
         Node.__init__(self, name, terminals=terminals)
 
@@ -230,22 +215,20 @@ class TextNode(Node):
 
     def process(self, **kwds):
         inputData = kwds['In']
-        if inputData == self.JUMP:
-            categoryText = QtGui.QLabel("Jump")
-            self.layout.addWidget(categoryText)
-        elif inputData == self.SIT:
-            categoryText = QtGui.QLabel("Sit")
-            self.layout.addWidget(categoryText)
-        if inputData == self.WALK:
-            categoryText = QtGui.QLabel("Walk")
-            self.layout.addWidget(categoryText)
-
-
+        if inputData is not None:
+            if inputData[0] == self.SHAKE:
+                self.categoryText.setText("Shake")
+            elif inputData[0] == self.SIT:
+                self.categoryText.setText("Sit")
+            if inputData[0] == self.LIFT:
+                self.categoryText.setText("Lift")
 
 
 fclib.registerNodeType(TextNode, [('Sensor',)])
 
 
+# Created by Lucia Eckl and Katharina Lichtner
+# creation of every Node and connection of the nodes
 if __name__ == '__main__':
     app = QtGui.QApplication([])
     win = QtGui.QMainWindow()
@@ -255,7 +238,6 @@ if __name__ == '__main__':
     layout = QtGui.QGridLayout()
     cw.setLayout(layout)
 
-    # Create an empty flowchart with a single input and output
     fc = Flowchart(terminals={
     })
     w = fc.widget()
@@ -289,8 +271,6 @@ if __name__ == '__main__':
     pw4Node = fc.createNode('PlotWidget', pos=(750, -150))
     pw4Node.setPlot(pw4)
 
-
-
     wiimoteNode = fc.createNode('Wiimote', pos=(0, 0),)
     buffer1Node = fc.createNode('Buffer', pos=(150, -150))
     buffer2Node = fc.createNode('Buffer', pos=(150, 0))
@@ -298,7 +278,6 @@ if __name__ == '__main__':
     fftNode = fc.createNode('Fft', pos=(550, 0))
     svmNode = fc.createNode('Svm', pos=(550, 120))
     textNode = fc.createNode('TextNode', pos=(550, 200))
-
 
     fc.connectTerminals(wiimoteNode['accelX'], buffer1Node['dataIn'])
     fc.connectTerminals(wiimoteNode['accelY'], buffer2Node['dataIn'])
@@ -312,7 +291,6 @@ if __name__ == '__main__':
     fc.connectTerminals(fftNode['fftdataOut'], pw4Node['In'])
     fc.connectTerminals(fftNode['fftdataOut'], svmNode['In'])
     fc.connectTerminals(svmNode['Out'], textNode['In'])
-
 
     win.show()
 
