@@ -76,6 +76,7 @@ class SvmNode(Node):
     nodeName = "Svm"
 
 
+    # progress bar source: https://pythonprogramming.net/progress-bar-pyqt-tutorial/, last visited: 20.06.2018
     def __init__(self, name):
         terminals = {
             'In': dict(io='in'),
@@ -96,8 +97,6 @@ class SvmNode(Node):
         self.predictInput = np.array([])
         self.inputData_cut = np.array([])
         self.featureVector = []
-       # self.training_data_reshaped = np.array([])
-        #self.featureVector_reshaped = np.array([])
 
         self.ui = QtGui.QWidget()
         self.layout = QtGui.QGridLayout()
@@ -121,6 +120,11 @@ class SvmNode(Node):
         self.mode.addItem("Prediction")
         self.mode.activated.connect(self.getTextFromMode)
         self.layout.addWidget(self.mode)
+
+        self.progress = QtGui.QProgressBar()
+        self.progress.setGeometry(200, 80, 250, 20)
+        self.layout.addWidget(self.progress)
+
 
         self.ui.setLayout(self.layout)
 
@@ -146,6 +150,8 @@ class SvmNode(Node):
         if self.timer.elapsed() < self.TRAININGTIME:
             inputData = kwds['In']
             if self.modeText == "Training":
+                self.completed = self.timer.elapsed()/49
+                self.progress.setValue(self.completed)
                 if self.activityText == "Shaking":
                     self.featureVector.append(self.SHAKE)
 
@@ -158,11 +164,13 @@ class SvmNode(Node):
                 self.c.fit(self.training_data, self.featureVector)
 
             elif self.modeText == "Prediction":
+                self.completed = self.timer.elapsed()/49
+                self.progress.setValue(self.completed)
                 predicted = self.c.predict([inputData[1:]])
-                print("predicted: ", predicted)
 
+        if self.modeText == "Inactive":
+            self.progress.setValue(0)
 
-        print("end")
         self.timer.elapsed()
 
         return {'Out': predicted}
@@ -228,7 +236,6 @@ if __name__ == '__main__':
     layout = QtGui.QGridLayout()
     cw.setLayout(layout)
 
-    # Create an empty flowchart with a single input and output
     fc = Flowchart(terminals={
     })
     w = fc.widget()
