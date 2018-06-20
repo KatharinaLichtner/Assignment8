@@ -1,0 +1,34 @@
+﻿Answers where solved equally by Lucia Eckl and Katharina Lichtner
+
+
+• What is the title of the paper?
+Avoiding Pitfalls When Using Machine Learning in HCI Studies
+
+
+• What are some common use cases for machine learning in practical applications or research prototypes?
+Modelling human behavior, wearable computing and activity recognition (Kostakos & Musolesi, 2017, p. 34). The development of novel UI techniques like gesture recognition or the optimization of resources like the conservation of the smartphone battery or notifications, which are intelligent are popular in the machine learning domain and predicting future activities of the user  (Kostakos & Musolesi, 2017, p. 34 -35). 
+
+
+• Which problems of machine learning do the authors of the paper identify? Explain one of them in detail.
+The problem of correlation vs causation must be considered. Quite often machine learning algorithm results do not come up with insights in causality relationship but with association relationships. Researchers must be careful with conclusions from results which could be effected of correlation and not of causation. Many studies are based on data which are collected through crowdsourcing, mobile apps and third-party APIs. Causality is an active area in machine learning community in the moment, but this is worth nothing (Kostakos & Musolesi, 2017, p. 36).  
+
+
+
+
+• What are the credentials of the authors with regard to machine learning? Have they published research on machine learning (or using machine-learning techniques) previously?
+
+
+The authors have published research  for this topic. For example in “Modelling Smartphone Usage: A Markov State Transition Model” they examined how much time the users spent at each state, how much time the user need to get to another state. But they did not use machine learning (Kostakos, Ferreira, Goncalves, & Hosio, 2016).
+In “Designing Content-driven Intelligent Notification Mechanisms for Mobile Applications” mobile notifications and their impact of content on the users’ acceptance was presented. A series of predictors based on machine learning was designed, created and tested (Mehrotra, Musolesi, Hendley, & Pejovic, 2015, p. 822). 
+A survey phenomena was presented in “Anticipatory Mobile Computing: A Survey of the State of the Art and Research Challenges”, where mobile phones can predict and infer. Machine learning techniques were also described for such predictions (Pejovic & Musolesi, 2013, p. 1). 
+The topic of “Investigating causality in human behavior from smartphone sensor data: a quasi-experimental approach” is the design, implementation and evaluation of a generic framework with which causation studies on human behavior from data of the smartphone can be conducted (Tsapeli & Musolesi, 2015, p. 1). 
+
+
+References 
+
+
+Kostakos, V., Ferreira, D., Goncalves, J., & Hosio, S. (2016). Modelling smartphone usage. Proceedings of the 2016 ACM International Joint Conference on Pervasive and Ubiquitous Computing - UbiComp ’16, 486–497. https://doi.org/10.1145/2971648.2971669
+Kostakos, V., & Musolesi, M. (2017). Avoiding pitfalls when using machine learning in HCI studies. Interactions, 24(4), 34–37. https://doi.org/10.1145/3085556
+Mehrotra, A., Musolesi, M., Hendley, R., & Pejovic, V. (2015). Designing content-driven intelligent notification mechanisms for mobile applications. Proceedings of the 2015 ACM International Joint Conference on Pervasive and Ubiquitous Computing - UbiComp ’15, 813–824. https://doi.org/10.1145/2750858.2807544
+Pejovic, V., & Musolesi, M. (2013). Anticipatory Mobile Computing: A Survey of the State of the Art and Research Challenges, V(January), 1–29. https://doi.org/10.1145/2693843
+Tsapeli, F., & Musolesi, M. (2015). Investigating causality in human behavior from smartphone sensor data: a quasi-experimental approach. EPJ Data Science, 4(1), 1–15. https://doi.org/10.1140/epjds/s13688-015-0061-1
